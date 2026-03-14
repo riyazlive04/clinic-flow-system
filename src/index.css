@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    --primary: 210 60% 16%;
+    --primary-foreground: 210 20% 98%;
+
+    --secondary: 215 70% 48%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 216 25% 96%;
+    --muted-foreground: 215 14% 40%;
+
+    --accent: 215 75% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 215 70% 48%;
+
+    --radius: 0.75rem;
+
+    --section-alt: 216 20% 97%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 215 70% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .section-padding {
+    @apply px-4 py-12 md:px-8 md:py-20 lg:px-16 lg:py-28;
+  }
+
+  .section-alt {
+    background-color: hsl(var(--section-alt));
+  }
+
+  .gradient-navy-teal {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary) / 0.85));
+  }
+
+  .gradient-cta {
+    background: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--secondary)));
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+  }
+
+  .cta-pulse {
+    animation: ctaPulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .scroll-progress {
+    transform-origin: left;
+  }
+}
+
+@keyframes ctaPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsla(215, 75%, 45%, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 10px hsla(215, 75%, 45%, 0);
+  }
+}
+
+@keyframes flowLine {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes floatUp {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-flow-line {
+  stroke-dasharray: 1000;
+  animation: flowLine 3s ease-in-out forwards;
+}
+
+.animate-float {
+  animation: floatUp 3s ease-in-out infinite;
+}
