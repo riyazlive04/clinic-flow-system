@@ -49,8 +49,8 @@ const PatientDropOff = () => {
                     initial={{ scaleX: 0 }}
                     animate={isVisible ? { scaleX: 1 } : {}}
                     transition={{ delay: 0.3 + i * 0.15, duration: 0.5 }}
-                    style={{ width: step.width, transformOrigin: "left" }}
-                    className={`rounded-lg py-3 px-4 flex items-center justify-between ${
+                    style={{ width: step.width, minWidth: "fit-content", transformOrigin: "left" }}
+                    className={`rounded-lg py-3 px-4 flex items-center justify-between gap-3 ${
                       step.dropOff
                         ? "bg-destructive/10 border border-destructive/20"
                         : "gradient-navy-teal"

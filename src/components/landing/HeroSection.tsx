@@ -9,7 +9,7 @@ const stages = ["Consultation", "Treatment", "Follow-Up", "Recovery"];
 
 const HeroSection = ({ onBookClick }: HeroSectionProps) => {
   return (
-    <section className="min-h-[100svh] flex items-center pt-16 md:pt-20 section-padding overflow-hidden">
+    <section className="min-h-[100svh] flex items-center pt-24 md:pt-28 section-padding overflow-hidden">
       <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
         {/* Left */}
         <motion.div
