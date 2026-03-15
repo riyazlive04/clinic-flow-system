@@ -304,15 +304,14 @@ const BookingCalendar = ({ onBookClick: _onBookClick }: BookingCalendarProps) =>
     // 4. Open WhatsApp
     const dateDisplay = format(selectedDate, "EEEE, MMMM d, yyyy");
     const waMsg = encodeURIComponent(
-      `Hi! I've just booked a free clinic blueprint session with Sirah Digital.\n\n` +
+      `Hi! I've just booked a *Free Clinic System Blueprint Session* with Sirah Digital.\n\n` +
       `📅 Date: ${dateDisplay}\n` +
-      `⏰ Time: ${selectedSlot.display}\n` +
+      `⏰ Time: ${selectedSlot.display}\n\n` +
       `👤 Name: ${form.name}\n` +
       `📧 Email: ${form.email}\n` +
-      `📱 Phone: ${form.countryCode} ${form.phone}\n` +
-      `🏢 Business: ${form.businessType}\n` +
-      (link ? `🔗 Meet: ${link}\n` : "") +
-      `\nLooking forward to the call!`
+      `📱 Phone: ${form.countryCode} ${form.phone}\n\n` +
+      `🏥 Business: ${form.businessType}\n\n` +
+      `Looking forward to the call!`
     );
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${waMsg}`, "_blank");
 
