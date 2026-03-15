@@ -292,6 +292,11 @@ const BookingCalendar = ({ onBookClick: _onBookClick }: BookingCalendarProps) =>
     // Bust the slot cache for this date so re-fetch reflects the new booking
     slotCache.current.delete(format(selectedDate, "yyyy-MM-dd"));
 
+    // Fire Meta Pixel Lead event
+    if (typeof window !== "undefined" && (window as any).fbq) {
+      (window as any).fbq("track", "Lead");
+    }
+
     // 3. Fire n8n webhook (silent)
     if (N8N_WEBHOOK_URL) {
       fetch(N8N_WEBHOOK_URL, {
