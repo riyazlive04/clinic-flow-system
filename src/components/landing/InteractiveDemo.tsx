@@ -32,7 +32,7 @@ const InteractiveDemo = ({ onBookClick }: InteractiveDemoProps) => {
             See How The PatientFlow System Works
           </h2>
           <p className="text-muted-foreground text-sm md:text-base">Click a patient card to advance their journey.</p>
-          <p className="text-xs text-muted-foreground/60 mt-1 md:hidden">← Swipe board to see all stages →</p>
+          <p className="text-xs text-muted-foreground/60 mt-1 sm:hidden">Tap a patient card to advance their journey</p>
         </motion.div>
 
         <motion.div
@@ -41,55 +41,94 @@ const InteractiveDemo = ({ onBookClick }: InteractiveDemoProps) => {
           transition={{ delay: 0.2 }}
           className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden"
         >
-          {/* Scrollable wrapper on mobile */}
-          <div className="overflow-x-auto">
-          <div className="min-w-[480px]">
-          {/* Header */}
-          <div className="grid grid-cols-4 border-b border-border">
-            {columns.map((col) => (
-              <div key={col} className="p-3 md:p-4 text-center font-display font-semibold text-sm text-primary border-r border-border last:border-r-0">
-                {col}
-              </div>
-            ))}
+          {/* Desktop: 4-column grid */}
+          <div className="hidden sm:block">
+            {/* Header */}
+            <div className="grid grid-cols-4 border-b border-border">
+              {columns.map((col) => (
+                <div key={col} className="p-3 md:p-4 text-center font-display font-semibold text-sm text-primary border-r border-border last:border-r-0">
+                  {col}
+                </div>
+              ))}
+            </div>
+
+            {/* Board */}
+            <div className="grid grid-cols-4 min-h-[200px] relative">
+              {columns.map((_, colIdx) => (
+                <div key={colIdx} className="p-2 md:p-4 border-r border-border last:border-r-0 flex flex-col gap-2">
+                  <AnimatePresence>
+                    {patientNames.map((name, pIdx) =>
+                      patientStages[pIdx] === colIdx ? (
+                        <motion.button
+                          key={name}
+                          layout
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          onClick={() => advancePatient(pIdx)}
+                          className="bg-muted border border-border rounded-lg p-3 text-left hover:border-secondary hover:shadow-md transition-all cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-secondary shrink-0" />
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {name}
+                            </span>
+                          </div>
+                          {colIdx < columns.length - 1 && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground group-hover:text-secondary transition-colors">
+                              <span>Advance</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </div>
+                          )}
+                        </motion.button>
+                      ) : null
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Board */}
-          <div className="grid grid-cols-4 min-h-[200px] relative">
-            {columns.map((_, colIdx) => (
-              <div key={colIdx} className="p-2 md:p-4 border-r border-border last:border-r-0 flex flex-col gap-2">
-                <AnimatePresence>
-                  {patientNames.map((name, pIdx) =>
-                    patientStages[pIdx] === colIdx ? (
-                      <motion.button
-                        key={name}
-                        layout
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        onClick={() => advancePatient(pIdx)}
-                        className="bg-muted border border-border rounded-lg p-2 md:p-3 text-left hover:border-secondary hover:shadow-md transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-secondary shrink-0" />
-                          <span className="text-xs md:text-sm font-medium text-foreground truncate">
-                            {name}
-                          </span>
-                        </div>
-                        {colIdx < columns.length - 1 && (
-                          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground group-hover:text-secondary transition-colors">
-                            <span className="hidden md:inline">Advance</span>
-                            <ArrowRight className="w-3 h-3" />
+          {/* Mobile: vertical list of stages */}
+          <div className="sm:hidden divide-y divide-border">
+            {columns.map((col, colIdx) => (
+              <div key={col} className="p-3">
+                <p className="font-display font-semibold text-xs text-primary mb-2">{col}</p>
+                <div className="flex flex-col gap-2 min-h-[40px]">
+                  <AnimatePresence>
+                    {patientNames.map((name, pIdx) =>
+                      patientStages[pIdx] === colIdx ? (
+                        <motion.button
+                          key={name}
+                          layout
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          onClick={() => advancePatient(pIdx)}
+                          className="bg-muted border border-border rounded-lg p-2.5 text-left hover:border-secondary hover:shadow-md transition-all cursor-pointer group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-secondary shrink-0" />
+                              <span className="text-sm font-medium text-foreground">
+                                {name}
+                              </span>
+                            </div>
+                            {colIdx < columns.length - 1 && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-secondary transition-colors">
+                                <span>Next</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </motion.button>
-                    ) : null
-                  )}
-                </AnimatePresence>
+                        </motion.button>
+                      ) : null
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             ))}
           </div>
-          </div>{/* end min-w */}
-          </div>{/* end overflow-x-auto */}
         </motion.div>
 
         <div className="text-center mt-8">

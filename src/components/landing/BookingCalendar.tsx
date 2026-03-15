@@ -414,7 +414,7 @@ const BookingCalendar = ({ onBookClick: _onBookClick }: BookingCalendarProps) =>
               <p className="text-muted-foreground mb-6 text-sm md:text-base">
                 We've received your booking. You'll get a confirmation shortly.
               </p>
-              <div className="bg-muted rounded-xl p-4 mb-6 inline-block text-left min-w-[240px]">
+              <div className="bg-muted rounded-xl p-4 mb-6 inline-block text-left w-full sm:w-auto sm:min-w-[240px]">
                 <p className="text-xs text-muted-foreground mb-1">Scheduled for</p>
                 <p className="font-display font-semibold text-primary">{confirmedDateTime}</p>
               </div>

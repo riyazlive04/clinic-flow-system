@@ -37,7 +37,7 @@ const ProblemSection = () => {
               animate={isVisible ? { opacity: 1, scaleX: 1 } : {}}
               transition={{ delay: 0.2 + i * 0.15, duration: 0.5 }}
               className="gradient-navy-teal text-primary-foreground font-display font-bold py-3 rounded-lg mb-2 flex items-center justify-center"
-              style={{ width: `${30 + num * 0.5}%`, minWidth: 120 }}
+              style={{ width: `${30 + num * 0.5}%`, minWidth: 80 }}
             >
               {num} patients
             </motion.div>
