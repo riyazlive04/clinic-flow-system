@@ -263,6 +263,7 @@ const Dashboard = ({ onLogout }: { onLogout: () => void }) => {
           business_type: lead.business_type,
           meeting_time: lead.meeting_time,
           attendance_status: newStatus,
+          calendarLink: "https://clinic-flow-system.sirahagents.com/",
         });
       }
 
