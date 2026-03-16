@@ -20,13 +20,9 @@ import {
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAvailableSlots, createBooking, type Slot } from "@/services/booking";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Slot {
-  dateTime: string;
-  display: string;
-}
 
 interface FormData {
   name: string;
@@ -45,7 +41,6 @@ interface BookingCalendarProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxic2l5cWJoamF0bG1xcGhqaXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzYyMTgsImV4cCI6MjA4ODExMjIxOH0.iWUso735ZmnaqI-WxtlSvhboFFPDMRPzETlCN9wzYDI";
 const N8N_WEBHOOK_URL = (import.meta.env.VITE_N8N_WEBHOOK_URL as string) || "";
 const WHATSAPP_NUMBER = (import.meta.env.VITE_WHATSAPP_NUMBER as string) || "919789961631";
 
@@ -118,25 +113,7 @@ const BookingCalendar = ({ onBookClick: _onBookClick }: BookingCalendarProps) =>
       return slotCache.current.get(dateStr)!;
     }
 
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (SUPABASE_ANON_KEY) {
-      headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
-      headers["apikey"] = SUPABASE_ANON_KEY;
-    }
-    const res = await fetch(
-      `https://lbsiyqbhjatlmqphjitf.supabase.co/functions/v1/get-slots?date=${dateStr}`,
-      { headers }
-    );
-    const data = await res.json();
-    console.log("[get-slots] response:", data);
-
-    let slots: Slot[] = [];
-    if (data.success && Array.isArray(data.slots)) {
-      slots = data.slots;
-    } else {
-      console.warn("[get-slots] returned error:", data.error ?? data);
-    }
-
+    const slots = await getAvailableSlots(dateStr);
     slotCache.current.set(dateStr, slots);
     return slots;
   };
@@ -191,47 +168,24 @@ const BookingCalendar = ({ onBookClick: _onBookClick }: BookingCalendarProps) =>
       name: form.name,
       email: form.email,
       phone: form.phone,
-      country_code: form.countryCode,
       countryCode: form.countryCode,
       businessType: form.businessType,
-      dateTime: selectedSlot.dateTime,
       website: form.website,
       challenge: form.challenge,
       automateProcess: form.automateProcess,
+      dateTime: selectedSlot.dateTime,
     };
 
-    const link = "";
-
-    // Book meeting via edge function
+    // Book meeting via shared service
+    let link = "";
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (SUPABASE_ANON_KEY) {
-        headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
-        headers["apikey"] = SUPABASE_ANON_KEY;
+      const result = await createBooking(payload, "Clinic Flow System");
+      if (!result.success) {
+        setError(result.error || "Booking failed");
+        setSubmitting(false);
+        return;
       }
-      const res = await fetch(
-        "https://lbsiyqbhjatlmqphjitf.supabase.co/functions/v1/book-meeting",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            name: form.name,
-            email: form.email,
-            phone: form.phone,
-            country_code: form.countryCode,
-            business_type: form.businessType,
-            website: form.website,
-            challenge: form.challenge,
-            automate_process: form.automateProcess,
-            meeting_time: selectedSlot.dateTime,
-            lp_name: "Clinic Flow System",
-          }),
-        }
-      );
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Booking failed");
-      }
+      link = result.meet_link || "";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Booking failed. Please check your connection and try again.");
       setSubmitting(false);
