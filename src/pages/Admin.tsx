@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Eye, EyeOff, RefreshCw, LogOut, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@supabase/supabase-js";
+import { formatIST } from "@/utils/formatIST";
 
 // ─── Supabase ────────────────────────────────────────────────────────────────
 
@@ -61,21 +62,6 @@ function shortId(id: string) {
   return id.replace(/-/g, "").slice(0, 5);
 }
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Intl.DateTimeFormat("en-IN", {
-      timeZone: "Asia/Kolkata",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    }).format(new Date(iso));
-  } catch {
-    return "—";
-  }
-}
 
 function formatPhone(countryCode: string, phone: string): string {
   if (!phone) return "—";
@@ -374,7 +360,7 @@ const Dashboard = ({ onLogout }: { onLogout: () => void }) => {
               <tbody className="divide-y divide-gray-50">
                 {leads.map((lead, i) => {
                   const busy = updating.has(lead.id);
-                  const datetime = formatDateTime(lead.meeting_time ?? lead.created_at);
+                  const datetime = formatIST(lead.meeting_time ?? lead.created_at);
                   return (
                     <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
 
