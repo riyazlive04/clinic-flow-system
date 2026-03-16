@@ -1,20 +1,18 @@
-// supabase/functions/create-booking/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { google } from "npm:googleapis@126";
 
-const CORS_HEADERS = {
+const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Max-Age": "86400",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-const MEET_DURATION = 45; // minutes
+const MEET_DURATION = 45;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: CORS_HEADERS });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -34,17 +32,20 @@ serve(async (req) => {
     if (!name || !email || !phone || !dateTime) {
       return new Response(
         JSON.stringify({ success: false, error: "Missing required fields" }),
-        { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
+    // ── Supabase client (service-role to bypass RLS) ──────────────────────
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // ── Step 1: Atomically reserve the slot ─────────────────────────────────
-    // Only updates if status is still 'available' — prevents double bookings
+    // ── Step 1: Atomically reserve the slot ───────────────────────────────
     const { data: reserved, error: reserveError } = await supabase
       .from("calendar_events")
       .update({ status: "booked" })
@@ -55,14 +56,20 @@ serve(async (req) => {
 
     if (reserveError || !reserved) {
       return new Response(
-        JSON.stringify({ success: false, error: "Slot already booked or unavailable" }),
-        { status: 409, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: false,
+          error: "Slot already booked or unavailable",
+        }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
     const calendarEventId = reserved.id;
 
-    // ── Step 2: Insert lead into leads table ────────────────────────────────
+    // ── Step 2: Insert lead ───────────────────────────────────────────────
     const { data: lead, error: leadError } = await supabase
       .from("leads")
       .insert({
@@ -81,7 +88,7 @@ serve(async (req) => {
       .single();
 
     if (leadError) {
-      // Rollback: release the slot
+      // Rollback slot
       await supabase
         .from("calendar_events")
         .update({ status: "available" })
@@ -89,19 +96,20 @@ serve(async (req) => {
       throw leadError;
     }
 
-    // ── Step 3: Link lead to the calendar event ─────────────────────────────
+    // ── Step 3: Link lead to the calendar event ───────────────────────────
     await supabase
       .from("calendar_events")
       .update({ lead_id: lead.id })
       .eq("id", calendarEventId);
 
-    // ── Step 4: Create Google Calendar event with Meet link ─────────────────
+    // ── Step 4: Create Google Calendar event with Meet link ───────────────
     let meet_link = "";
     let calendar_link = "";
 
     try {
       const serviceAccountJson = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
-      if (!serviceAccountJson) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON not set");
+      if (!serviceAccountJson)
+        throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON not set");
 
       const serviceAccount = JSON.parse(serviceAccountJson);
 
@@ -109,13 +117,15 @@ serve(async (req) => {
         serviceAccount.client_email,
         undefined,
         serviceAccount.private_key,
-        ["https://www.googleapis.com/auth/calendar"],
+        ["https://www.googleapis.com/auth/calendar"]
       );
 
       const calendar = google.calendar({ version: "v3", auth });
 
       const startTime = new Date(dateTime);
-      const endTime = new Date(startTime.getTime() + MEET_DURATION * 60 * 1000);
+      const endTime = new Date(
+        startTime.getTime() + MEET_DURATION * 60 * 1000
+      );
 
       const event = await calendar.events.insert({
         calendarId: "riyazlivechat@gmail.com",
@@ -131,8 +141,13 @@ serve(async (req) => {
             challenge ? `Challenge: ${challenge}` : "",
             automateProcess ? `Automate: ${automateProcess}` : "",
             lp_name ? `Source: ${lp_name}` : "",
-          ].filter(Boolean).join("\n"),
-          start: { dateTime: startTime.toISOString(), timeZone: "Asia/Kolkata" },
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          start: {
+            dateTime: startTime.toISOString(),
+            timeZone: "Asia/Kolkata",
+          },
           end: { dateTime: endTime.toISOString(), timeZone: "Asia/Kolkata" },
           attendees: [{ email }],
           conferenceData: {
@@ -153,19 +168,24 @@ serve(async (req) => {
         .update({ meet_link, calendar_link })
         .eq("id", lead.id);
     } catch (calErr) {
-      // Google Calendar is a synced copy — booking still succeeds
       console.error("Google Calendar sync failed:", calErr);
     }
 
     return new Response(
       JSON.stringify({ success: true, meet_link, calendar_link }),
-      { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   } catch (error) {
     console.error("create-booking error:", error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });
