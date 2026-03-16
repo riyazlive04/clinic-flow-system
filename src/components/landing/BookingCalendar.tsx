@@ -19,7 +19,6 @@ import {
   ExternalLink,
   Clock,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -46,7 +45,6 @@ interface BookingCalendarProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) || "https://lbsiyqbhjatlmqphjitf.supabase.co";
 const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxic2l5cWJoamF0bG1xcGhqaXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MzYyMTgsImV4cCI6MjA4ODExMjIxOH0.iWUso735ZmnaqI-WxtlSvhboFFPDMRPzETlCN9wzYDI";
 const N8N_WEBHOOK_URL = (import.meta.env.VITE_N8N_WEBHOOK_URL as string) || "";
 const WHATSAPP_NUMBER = (import.meta.env.VITE_WHATSAPP_NUMBER as string) || "919789961631";
@@ -114,88 +112,29 @@ const BookingCalendar = ({ onBookClick: _onBookClick }: BookingCalendarProps) =>
 
   // ── Slot fetching ────────────────────────────────────────────────────────
 
-  const generateLocalSlots = (date: Date): Slot[] => {
-    const now = new Date();
-    const dateStr = format(date, "yyyy-MM-dd");
-    const isToday = dateStr === format(now, "yyyy-MM-dd");
-    const slots: Slot[] = [];
-    for (let hour = 10; hour < 19; hour++) {
-      const slotDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, 0, 0, 0);
-      if (isToday && slotDate <= now) continue;
-      slots.push({
-        dateTime: slotDate.toISOString(),
-        display: slotDate.toLocaleTimeString("en-IN", {
-          hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata",
-        }),
-      });
-    }
-    return slots;
-  };
-
   const fetchSlotsRaw = async (date: Date): Promise<Slot[]> => {
     const dateStr = format(date, "yyyy-MM-dd");
     if (slotCache.current.has(dateStr)) {
       return slotCache.current.get(dateStr)!;
     }
 
-    // ── Step 1: get Google-Calendar-filtered slots from edge function ─────────
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (SUPABASE_ANON_KEY) {
+      headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
+      headers["apikey"] = SUPABASE_ANON_KEY;
+    }
+    const res = await fetch(
+      `https://lbsiyqbhjatlmqphjitf.supabase.co/functions/v1/get-slots?date=${dateStr}`,
+      { headers }
+    );
+    const data = await res.json();
+    console.log("[get-slots] response:", data);
+
     let slots: Slot[] = [];
-    let edgeFunctionWorked = false;
-
-    try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (SUPABASE_ANON_KEY) {
-        headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
-        headers["apikey"] = SUPABASE_ANON_KEY;
-      }
-      const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/get-slots?date=${dateStr}`,
-        { headers }
-      );
-      const data = await res.json();
-      console.log("[get-slots] response:", data);
-      if (data.success && Array.isArray(data.slots)) {
-        slots = data.slots;
-        edgeFunctionWorked = true;
-      } else {
-        console.warn("[get-slots] returned error:", data.error ?? data);
-      }
-    } catch (err) {
-      console.error("[get-slots] fetch failed:", err);
-    }
-
-    // ── Step 2: fallback to local slot generation if edge function failed ─────
-    if (!edgeFunctionWorked) {
-      console.warn("[get-slots] falling back to local slot generation");
-      slots = generateLocalSlots(date);
-    }
-
-    // ── Step 3: remove slots already booked in leads table (all LPs) ─────────
-    if (slots.length > 0 && supabase) {
-      try {
-        const dayStart = `${dateStr}T00:00:00+05:30`;
-        const dayEnd   = `${dateStr}T23:59:59+05:30`;
-
-        const { data: booked } = await supabase
-          .from("leads")
-          .select("meeting_time")
-          .gte("meeting_time", dayStart)
-          .lte("meeting_time", dayEnd)
-          .not("meeting_time", "is", null);
-
-        if (booked && booked.length > 0) {
-          const bookedMs = new Set(
-            booked.map((r: { meeting_time: string }) =>
-              new Date(r.meeting_time).getTime()
-            )
-          );
-          slots = slots.filter(
-            (s) => !bookedMs.has(new Date(s.dateTime).getTime())
-          );
-        }
-      } catch (err) {
-        console.error("[leads-filter] query failed:", err);
-      }
+    if (data.success && Array.isArray(data.slots)) {
+      slots = data.slots;
+    } else {
+      console.warn("[get-slots] returned error:", data.error ?? data);
     }
 
     slotCache.current.set(dateStr, slots);
@@ -262,29 +201,39 @@ const BookingCalendar = ({ onBookClick: _onBookClick }: BookingCalendarProps) =>
     };
 
     const link = "";
-    let success = false;
 
-    // Insert booking directly into leads table
-    if (supabase) {
-      try {
-        const { error: dbError } = await supabase.from("leads").insert({
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
-          country_code: form.countryCode,
-          business_type: form.businessType,
-          website: form.website,
-          challenge: form.challenge,
-          automate_process: form.automateProcess,
-          meeting_time: selectedSlot.dateTime,
-          lp_name: "Clinic Flow System",
-        });
-        if (!dbError) success = true;
-      } catch { /* fall through */ }
-    }
-
-    if (!success) {
-      setError("Booking failed. Please check your connection and try again.");
+    // Book meeting via edge function
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (SUPABASE_ANON_KEY) {
+        headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
+        headers["apikey"] = SUPABASE_ANON_KEY;
+      }
+      const res = await fetch(
+        "https://lbsiyqbhjatlmqphjitf.supabase.co/functions/v1/book-meeting",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            phone: form.phone,
+            country_code: form.countryCode,
+            business_type: form.businessType,
+            website: form.website,
+            challenge: form.challenge,
+            automate_process: form.automateProcess,
+            meeting_time: selectedSlot.dateTime,
+            lp_name: "Clinic Flow System",
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Booking failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Booking failed. Please check your connection and try again.");
       setSubmitting(false);
       return;
     }
