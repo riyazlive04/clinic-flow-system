@@ -107,63 +107,69 @@ serve(async (req) => {
     /* STEP 4 — Create Google Calendar Event               */
     /* ---------------------------------------------------- */
 
-    const serviceAccount = JSON.parse(
-      Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON")!
-    );
+    let meetLink = "";
 
-    const auth = new google.auth.JWT(
-      serviceAccount.client_email,
-      undefined,
-      serviceAccount.private_key,
-      ["https://www.googleapis.com/auth/calendar"]
-    );
+    try {
+      const serviceAccount = JSON.parse(
+        Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON")!
+      );
 
-    const calendar = google.calendar({ version: "v3", auth });
+      const auth = new google.auth.JWT(
+        serviceAccount.client_email,
+        undefined,
+        serviceAccount.private_key,
+        ["https://www.googleapis.com/auth/calendar"]
+      );
 
-    const endTime = new Date(new Date(dateTime).getTime() + 45 * 60000);
+      const calendar = google.calendar({ version: "v3", auth });
 
-    const event = await calendar.events.insert({
-      calendarId: Deno.env.get("GOOGLE_CALENDAR_ID"),
-      conferenceDataVersion: 1,
-      requestBody: {
-        summary: `Strategy Call with ${name}`,
-        description: `
+      const endTime = new Date(new Date(dateTime).getTime() + 45 * 60000);
+
+      const event = await calendar.events.insert({
+        calendarId: Deno.env.get("GOOGLE_CALENDAR_ID"),
+        conferenceDataVersion: 1,
+        requestBody: {
+          summary: `Strategy Call with ${name}`,
+          description: `
 Name: ${name}
 Email: ${email}
 Phone: ${fullPhone}
 Business: ${businessType}
-        `,
-        start: {
-          dateTime: dateTime,
-          timeZone: "Asia/Kolkata"
-        },
-        end: {
-          dateTime: endTime.toISOString(),
-          timeZone: "Asia/Kolkata"
-        },
-        conferenceData: {
-          createRequest: {
-            requestId: crypto.randomUUID()
+          `,
+          start: {
+            dateTime: dateTime,
+            timeZone: "Asia/Kolkata"
+          },
+          end: {
+            dateTime: endTime.toISOString(),
+            timeZone: "Asia/Kolkata"
+          },
+          conferenceData: {
+            createRequest: {
+              requestId: crypto.randomUUID()
+            }
           }
         }
-      }
-    });
+      });
 
-    console.log("Google event created:", event.data.id);
+      console.log("Google event created:", event.data.id);
 
-    const meetLink =
-      event.data.conferenceData?.entryPoints?.find(
-        (x) => x.entryPointType === "video"
-      )?.uri || event.data.htmlLink;
+      meetLink =
+        event.data.conferenceData?.entryPoints?.find(
+          (x) => x.entryPointType === "video"
+        )?.uri || event.data.htmlLink || "";
 
-    /* ---------------------------------------------------- */
-    /* STEP 5 — Update lead with Meet link                 */
-    /* ---------------------------------------------------- */
+      /* -------------------------------------------------- */
+      /* STEP 5 — Update lead with Meet link               */
+      /* -------------------------------------------------- */
 
-    await supabase
-      .from("leads")
-      .update({ meet_link: meetLink })
-      .eq("id", leadId);
+      await supabase
+        .from("leads")
+        .update({ meet_link: meetLink })
+        .eq("id", leadId);
+    } catch (calErr) {
+      console.error("Google Calendar sync failed:", calErr);
+    }
 
     /* ---------------------------------------------------- */
     /* STEP 6 — Send n8n webhook                           */
