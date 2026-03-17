@@ -65,7 +65,9 @@ serve(async (req) => {
     /* STEP 2 — Insert lead                                */
     /* ---------------------------------------------------- */
 
-    const fullPhone = `${countryCode}${phone}`;
+    const cleanPhone = phone.replace(/\D/g, "");
+    const country_code = "+91";
+    const fullPhone = `${country_code}${cleanPhone}`;
 
     const { data: leadData, error: leadError } = await supabase
       .from("leads")
@@ -73,8 +75,8 @@ serve(async (req) => {
         name: name,
         email: email,
         business_type: businessType,
-        country_code: countryCode,
-        phone: phone,
+        country_code: country_code,
+        phone: cleanPhone,
         full_phone: fullPhone,
         meeting_time: new Date(dateTime),
         website: website || null,
@@ -146,7 +148,8 @@ Business: ${businessType}
           },
           conferenceData: {
             createRequest: {
-              requestId: crypto.randomUUID()
+              requestId: crypto.randomUUID(),
+              conferenceSolutionKey: { type: "hangoutsMeet" }
             }
           }
         }
@@ -180,16 +183,18 @@ Business: ${businessType}
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leadId,
           name,
           email,
-          phone: fullPhone,
+          phone: cleanPhone,
+          country_code,
           businessType,
           website,
           challenge,
           automateProcess,
           dateTime,
-          meetLink
+          timezone: "Asia/Calcutta",
+          meetLink,
+          lp_name: lp_name || "AI Flow"
         })
       });
 
