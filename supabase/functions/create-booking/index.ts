@@ -8,6 +8,9 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// ── YOUR PERMANENT GOOGLE MEET LINK ──────────────────────────────────────────
+const PERMANENT_MEET_LINK = "https://meet.google.com/rch-shez-jnw";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS });
@@ -109,7 +112,7 @@ serve(async (req) => {
     /* STEP 4 — Create Google Calendar Event               */
     /* ---------------------------------------------------- */
 
-    let meetLink = "";
+    const meetLink = PERMANENT_MEET_LINK;
 
     try {
       const serviceAccount = JSON.parse(
@@ -129,7 +132,7 @@ serve(async (req) => {
 
       const event = await calendar.events.insert({
         calendarId: Deno.env.get("GOOGLE_CALENDAR_ID"),
-        conferenceDataVersion: 1,
+        conferenceDataVersion: 0,
         requestBody: {
           summary: `Strategy Call with ${name}`,
           description: `
@@ -146,33 +149,23 @@ Business: ${businessType}
             dateTime: endTime.toISOString(),
             timeZone: "Asia/Kolkata"
           },
-          conferenceData: {
-            createRequest: {
-              requestId: crypto.randomUUID(),
-              conferenceSolutionKey: { type: "hangoutsMeet" }
-            }
-          }
+          location: meetLink
         }
       });
 
       console.log("Google event created:", event.data.id);
-
-      meetLink =
-        event.data.conferenceData?.entryPoints?.find(
-          (x) => x.entryPointType === "video"
-        )?.uri || event.data.htmlLink || "";
-
-      /* -------------------------------------------------- */
-      /* STEP 5 — Update lead with Meet link               */
-      /* -------------------------------------------------- */
-
-      await supabase
-        .from("leads")
-        .update({ meet_link: meetLink })
-        .eq("id", leadId);
     } catch (calErr) {
       console.error("Google Calendar sync failed:", calErr);
     }
+
+    /* -------------------------------------------------- */
+    /* STEP 5 — Update lead with Meet link               */
+    /* -------------------------------------------------- */
+
+    await supabase
+      .from("leads")
+      .update({ meet_link: meetLink })
+      .eq("id", leadId);
 
     /* ---------------------------------------------------- */
     /* STEP 6 — Send n8n webhook                           */
